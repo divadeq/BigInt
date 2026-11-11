@@ -1,11 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <cstddef>
 #include <array>
-#include <iostream>
+#include <ostream>
 #include <string_view>
 #include <stdexcept>
 #include <bit>
+#include <iomanip>
 
 template<std::size_t Bits>
 class BigInt {
@@ -55,7 +57,7 @@ public:
         }
     }
 
-    BigInt &operator+=(const BigInt &other) noexcept {
+    BigInt& operator+=(const BigInt& other) noexcept {
         std::uint64_t carry = 0;
 
         for (std::size_t i = 0; i < Limbs; ++i) {
@@ -67,7 +69,7 @@ public:
         return *this;
     }
 
-    BigInt &operator-=(const BigInt &other) noexcept {
+    BigInt& operator-=(const BigInt& other) noexcept {
         std::uint64_t borrow = 0;
 
         for (std::size_t i = 0; i < Limbs; ++i) {
@@ -79,7 +81,7 @@ public:
         return *this;
     }
 
-    BigInt &operator*=(const BigInt &other) noexcept {
+    BigInt& operator*=(const BigInt& other) noexcept {
         std::array<std::uint64_t, Limbs> temp_result{};
 
         for (std::size_t i = 0; i < Limbs; ++i) {
@@ -101,7 +103,7 @@ public:
 
     BigInt& operator/=(const BigInt& other) {
         BigInt quotient, remainder;
-        this->divide_modulo(other,quotient,remainder);
+        this->divide_modulo(other, quotient, remainder);
         *this = quotient;
         return *this;
     }
@@ -113,37 +115,37 @@ public:
         return *this;
     }
 
-    BigInt operator+(const BigInt &other) const noexcept {
+    [[nodiscard]] BigInt operator+(const BigInt& other) const noexcept {
         BigInt result = *this;
         result += other;
         return result;
     }
 
-    BigInt operator-(const BigInt &other) const noexcept {
+    [[nodiscard]] BigInt operator-(const BigInt& other) const noexcept {
         BigInt result = *this;
         result -= other;
         return result;
     }
 
-    BigInt operator*(const BigInt &other) const noexcept {
+    [[nodiscard]] BigInt operator*(const BigInt& other) const noexcept {
         BigInt result = *this;
         result *= other;
         return result;
     }
 
-    BigInt operator/(const BigInt &other) const {
+    [[nodiscard]] BigInt operator/(const BigInt& other) const {
         BigInt result = *this;
         result /= other;
         return result;
     }
 
-    BigInt operator%(const BigInt &other) const {
+    [[nodiscard]] BigInt operator%(const BigInt& other) const {
         BigInt result = *this;
         result %= other;
         return result;
     }
 
-    BigInt &operator<<=(std::size_t shift) noexcept {
+    BigInt& operator<<=(std::size_t shift) noexcept {
         if (shift >= Bits) {
             limbs.fill(0);
             return *this;
@@ -177,13 +179,13 @@ public:
         return *this;
     }
 
-    BigInt operator<<(std::size_t shift) const noexcept {
+    [[nodiscard]] BigInt operator<<(std::size_t shift) const noexcept {
         BigInt result = *this;
         result <<= shift;
         return result;
     }
 
-    BigInt &operator>>=(std::size_t shift) noexcept {
+    BigInt& operator>>=(std::size_t shift) noexcept {
         if (shift >= Bits) {
             limbs.fill(0);
             return *this;
@@ -214,7 +216,7 @@ public:
         return *this;
     }
 
-    BigInt operator>>(std::size_t shift) const noexcept {
+    [[nodiscard]] BigInt operator>>(std::size_t shift) const noexcept {
         BigInt result = *this;
         result >>= shift;
         return result;
@@ -241,7 +243,7 @@ public:
         return *this;
     }
 
-    BigInt operator~() const noexcept {
+    [[nodiscard]] BigInt operator~() const noexcept {
         BigInt result;
         for (std::size_t i = 0; i < Limbs; ++i) {
             result.limbs[i] = ~this->limbs[i];
@@ -249,7 +251,7 @@ public:
         return result;
     }
 
-    bool operator>(const BigInt &other) const noexcept {
+    [[nodiscard]] bool operator>(const BigInt& other) const noexcept {
         for (std::size_t i = Limbs; i > 0; --i) {
             std::size_t idx = i - 1;
             if (this->limbs[idx] > other.limbs[idx]) return true;
@@ -258,7 +260,7 @@ public:
         return false;
     }
 
-    bool operator<(const BigInt &other) const noexcept {
+    [[nodiscard]] bool operator<(const BigInt& other) const noexcept {
         for (std::size_t i = Limbs; i > 0; --i) {
             std::size_t idx = i - 1;
             if (this->limbs[idx] < other.limbs[idx]) return true;
@@ -267,23 +269,23 @@ public:
         return false;
     }
 
-    bool operator<=(const BigInt &other) const noexcept {
+    [[nodiscard]] bool operator<=(const BigInt& other) const noexcept {
         return !(*this > other);
     }
 
-    bool operator>=(const BigInt &other) const noexcept {
+    [[nodiscard]] bool operator>=(const BigInt& other) const noexcept {
         return !(*this < other);
     }
 
-    bool operator==(const BigInt &other) const noexcept {
+    [[nodiscard]] bool operator==(const BigInt& other) const noexcept {
         return this->limbs == other.limbs;
     }
 
-    bool operator!=(const BigInt &other) const noexcept {
+    [[nodiscard]] bool operator!=(const BigInt& other) const noexcept {
         return this->limbs != other.limbs;
     }
 
-    std::size_t bit_length() const noexcept {
+    [[nodiscard]] std::size_t bit_length() const noexcept {
         for (std::size_t i = Limbs; i > 0; --i) {
             std::size_t idx = i - 1;
             if (limbs[idx] != 0) {
@@ -293,8 +295,34 @@ public:
         return 0;
     }
 
+    friend std::ostream& operator<<(std::ostream& os, const BigInt& b) {
+        os << "0x";
+
+        bool started_printing = false;
+
+        for (std::size_t i = Limbs; i > 0; --i) {
+            std::size_t idx = i - 1;
+            std::uint64_t val = b.limbs[idx];
+
+            if (started_printing) {
+                os << std::setw(16) << std::setfill('0') << std::hex << val;
+            } else if (val != 0) {
+                os << std::hex << val;
+                started_printing = true;
+            }
+        }
+
+        if (!started_printing) {
+            os << "0";
+        }
+
+        os << std::dec;
+
+        return os;
+    }
+
 private:
-    std::array<uint64_t, Limbs> limbs{};
+    std::array<std::uint64_t, Limbs> limbs{};
 
     void divide_modulo(const BigInt& divisor, BigInt& quotient, BigInt& remainder) const {
         if (divisor == BigInt(0)) {
